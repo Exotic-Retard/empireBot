@@ -1,40 +1,23 @@
 [bot]
-nick = QAI
-realname = QAI
+nick = empirebot
+realname = empirebot
+nickserv_password = None
 
 host = irc.faforever.com
 port = 6667
 
 includes =
     irc3.plugins.command
-    qai_plugin
-    #irc3.plugins.storage
+    e_plugin
+    irc3.plugins.storage
 
-#storage = json://db.json
+storage = json://db.json
 
 autojoins =
-    qai_channel
+    e_clan
 
-nickserv_password = ""
-detectlanguage_api_key = ""
-
-youtube_key = ""
-youtube_time_fmt = ""
-
-challonge_username = faftd
-challonge_api_key = howAboutNo
-tourney_announcement_interval = 3600
-
-slack_api_key = howAboutNo
-
-spam_protect_time = 120
-rage_to_kick = 3
-
-report_to_irc_threshold = 1
-report_to_irc_channel = moderation
-report_to_slack_threshold = 3
-report_to_slack_channel = qai-tests
-report_instant_kick_threshold = 4
+moderatedChannels = 
+	e_clan
 
 [irc3.plugins.command]
 antiflood = true
@@ -44,9 +27,7 @@ guard = irc3.plugins.command.mask_based_policy
 [irc3.plugins.command.masks]
 # this section is used by the guard to secure the bot's command
 # change your nickname and uncomment the line below
-sheeo__!*@* = all_permissions
-Voodoo!*@* = all_permissions
 Washy!*@* = all_permissions
-Gorton!*@* = all_permissions
-Tyr!*@* = all_permissions
+speed2!*@* = all_permissions
+speed2_IRC!*@* = all_permissions
 * = view
