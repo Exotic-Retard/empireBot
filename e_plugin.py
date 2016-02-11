@@ -1,23 +1,19 @@
 # vim: ts=4 et sw=4 sts=4
 # -*- coding: utf-8 -*-
-import json
 import random
 import asyncio
 import re
-import aiohttp
-import aiomysql
 import itertools
 import irc3
 from irc3.plugins.command import command
 import time
-from urllib.parse import urlparse, parse_qs
 import threading
 
-from taunts import NONMEMBER_TAUNTS, NONMEMBER_TAUNTS_PM, TAUNTS
+from taunts import USE_FORBIDDEN, TALKING_REACTION, TAUNTS
 
 CLANMEMBER = {}
 IGNOREUSERS = ['NickServ', 'ChanServ', 'OperServ']
-NONMEMBER_TAUNTS_ALL = []
+ALLTAUNTS = []
 BEQUIETCHANNELS = ['#aeolus']
 LETMEGOOGLE = "http://lmgtfy.com/?q="
 MODERATEDCHANNELS = []
@@ -35,9 +31,10 @@ class Plugin(object):
         self.timers = {}
         self._rage = {}
 
-        global NONMEMBER_TAUNTS_ALL, IGNOREUSERS, MODERATEDCHANNELS
-        NONMEMBER_TAUNTS_ALL.extend(NONMEMBER_TAUNTS)
-        NONMEMBER_TAUNTS_ALL.extend(NONMEMBER_TAUNTS_PM)
+        global ALLTAUNTS, IGNOREUSERS, MODERATEDCHANNELS
+        ALLTAUNTS.extend(USE_FORBIDDEN)
+        ALLTAUNTS.extend(TAUNTS)
+        ALLTAUNTS.extend(TALKING_REACTION)
         IGNOREUSERS.extend([self.bot.config['nick']])
         for channel in self.bot.config['moderatedChannels']:
             MODERATEDCHANNELS.append('#' + channel)
@@ -73,19 +70,16 @@ class Plugin(object):
                     self.move_user(channel, mask.nick)
 
 
-    def move_user(self, channel, nick):
-        self.bot.privmsg('OperServ', 'svsjoin %s %s' % (nick, channel))
-
-
     @irc3.event(irc3.rfc.PRIVMSG)
     @asyncio.coroutine
     def on_privmsg(self, *args, **kwargs):
         msg, channel, sender = kwargs['data'], kwargs['target'], kwargs['mask']
+        #print(sender + ": " + msg)
         if sender.nick in IGNOREUSERS:
             return
         if not channel in MODERATEDCHANNELS:
             return
-        if self.__handledNonMember(sender.nick, channel=channel, tauntTable=NONMEMBER_TAUNTS_ALL):
+        if self.__handledNonMember(sender.nick, channel=channel, tauntTable=TALKING_REACTION, kick=False):
             return
 
 
@@ -96,7 +90,7 @@ class Plugin(object):
             %%hug
             %%hug <someone>
         """
-        if self.__handledNonMember(mask.nick, target, NONMEMBER_TAUNTS_ALL):
+        if self.__handledNonMember(mask.nick, target, ALLTAUNTS):
             return
         someone = args['<someone>']
         if someone == None:
@@ -191,13 +185,38 @@ class Plugin(object):
         return nick in CLANMEMBER
 
 
-    def __handledNonMember(self, nick, channel=None, tauntTable=NONMEMBER_TAUNTS_PM):
+    def __handledNonMember(self, nick, channel=None, tauntTable=TALKING_REACTION, kick=True):
         if self.__isClanMember(nick):
             return False
         if not channel:
             channel = nick
+        elif kick == True:
+            self.__kickFromChannel(nick, channel)
         self.__taunt(nick, channel=channel, tauntTable=tauntTable)
         return True
+
+
+    def __kickFromChannel(self, nick, channel):
+        self.bot.privmsg("ChanServ", "kick {channel} {nick}".format(**{
+                'channel': channel,
+                'nick': nick,
+            }))
+
+
+    @command
+    def kick(self, mask, target, args):
+        """Kick someone from channel
+
+            %%kick <person>
+        """
+        if self.__handledNonMember(mask.nick, target, USE_FORBIDDEN):
+            return
+        p = args.get('<person>')
+        if self.__isClanMember(p):
+            return
+        if p == self.bot.config['nick']:
+            p = mask.nick
+        self.__kickFromChannel(p, target)
 
 
     @command
@@ -206,7 +225,7 @@ class Plugin(object):
 
             %%taunt <person>
         """
-        if self.__handledNonMember(mask.nick, target, NONMEMBER_TAUNTS_ALL):
+        if self.__handledNonMember(mask.nick, target, USE_FORBIDDEN):
             return
         p = args.get('<person>')
         if p == self.bot.config['nick']:
@@ -220,7 +239,7 @@ class Plugin(object):
         if channel in BEQUIETCHANNELS:
             return
         if tauntTable is None:
-            tauntTable = NONMEMBER_TAUNTS_ALL
+            tauntTable = ALLTAUNTS
         self.bot.privmsg(channel, random.choice(tauntTable).format(**{
-            'name' : nick
+                'name' : nick
             }))

@@ -1,7 +1,7 @@
 [bot]
-nick = empirebot
-realname = empirebot
-nickserv_password = None
+nick = [e]mpirebot
+realname = [e]mpirebot
+nickserv_password = noty
 
 host = irc.faforever.com
 port = 6667
